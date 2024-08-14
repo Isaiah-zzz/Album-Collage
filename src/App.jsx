@@ -6,6 +6,7 @@ import './index.css';
 import {Collage} from './component/collage.jsx'
 import { MakeCollage } from './component/MakeCollage.jsx';
 
+
 function App() {
   return (
     // <div>

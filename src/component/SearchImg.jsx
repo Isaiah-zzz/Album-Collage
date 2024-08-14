@@ -34,8 +34,13 @@ export function SearchImg({ token, indexToChange, albums, setAlbums, toggleModal
 
   const handleModalClick = (album) => {
     const newAlbums = [...albums];
-    newAlbums[indexToChange] = album;
-
+    if (indexToChange === -1){
+      newAlbums.push(album)
+    }
+    else {
+      newAlbums[indexToChange] = album;
+    }
+    
     localStorage.setItem('albums',JSON.stringify(newAlbums))
 
     setAlbums(JSON.parse(localStorage.getItem('albums')))
