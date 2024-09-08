@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 
 import { SearchImg } from "./SearchImg";
 
-export function RandomAlbum({ token }) {
+export function RandomAlbum({ token, fetchData}) {
   const [albums, setAlbums] = useState([]);
   const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -12,6 +12,7 @@ export function RandomAlbum({ token }) {
 
   async function getRandomAlbums(accessToken, limit = 20) {
     try {
+      console.log(accessToken)
       const characters = "abcdefghijklmnopqrstuvwxyz";
       const randomChar = characters.charAt(
         Math.floor(Math.random() * characters.length)
@@ -40,8 +41,9 @@ export function RandomAlbum({ token }) {
     setAlbums(JSON.parse(localStorage.getItem('albums')))
     //   setIsLoading(true);
     } catch (error) {
-      console.error("Error fetching random albums:", error);
-      setError("Failed to fetch albums. Please try again later.");
+      // console.error("Error fetching random albums:", error);
+      // setError("Failed to fetch albums. Please try again later.");
+      console.log(error)
     } finally {
       setIsLoading(false);
     }
@@ -90,7 +92,7 @@ export function RandomAlbum({ token }) {
   }
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 p-4">
+    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 p-4">
       {albums.map((album, index) => (
         <div key={album.id} className="aspect-square overflow-hidden relative" onMouseEnter={() => setHoveredIndex(index)}
         onMouseLeave={() => setHoveredIndex(null)}>
@@ -120,7 +122,7 @@ export function RandomAlbum({ token }) {
           )}
         </div>
       ))}
-      <div className="w-full flex justify-center items-center border-dashed border-2"
+      <div className="w-full flex justify-center items-center border-dashed border-2 aspect-square cursor-pointer"
       onClick = {()=>{handleAlbumAdd()}}>
         <p className="text-grey-600 text-xl">+</p>
       </div>
