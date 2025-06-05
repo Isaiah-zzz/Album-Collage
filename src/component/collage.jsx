@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { RandomAlbum } from './randomAlbum.jsx';
 import { useNavigate } from 'react-router-dom';
+import { UserOption } from './userOption.jsx';
 import { Nav } from './Nav.jsx';
 
 export function Collage() {
@@ -68,6 +69,10 @@ export function Collage() {
 
     <div className="flex flex-col items-center justify-center min-h-screen p-4">
         <h1 className="mb-4 text-4xl font-extrabold leading-none tracking-tight text-gray-900 md:text-5xl lg:text-6xl">Album Collage</h1>
+
+        {/* <div className = "max-w-[50%]">
+            <UserOption></UserOption>
+        </div> */}
 
         <div className = "max-w-[50%]">
             <RandomAlbum token = {apiKey} fetchData = {fetchData}></RandomAlbum>

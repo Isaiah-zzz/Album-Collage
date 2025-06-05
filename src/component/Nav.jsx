@@ -8,7 +8,7 @@ export function Nav({setApiKey, fetchData}) {
   const [userData, setUserData] = useState(undefined)
   const [refreshToken, setRefreshToken] = useState(localStorage.getItem('refresh_token') || null);
   const [expiresAt, setExpiresAt] = useState(new Date(localStorage.getItem('expires')) || null);
-  console.log(localStorage.getItem('user_data'))
+  // console.log(localStorage.getItem('user_data'))
 
   const [isLoggedOut, setIsLoggedOut] = useState(true)
 

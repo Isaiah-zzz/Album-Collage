@@ -1,18 +1,24 @@
 import React, { useEffect, useState } from "react";
+import { UserOption } from './userOption.jsx';
 
 import { SearchImg } from "./SearchImg";
 
-export function RandomAlbum({ token, fetchData}) {
+export function RandomAlbum({ token, fetchData }) {
   const [albums, setAlbums] = useState([]);
   const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isOpen, setIsOpen] = useState(false);
   const [albumIndexToChange, setAlbumIndexToChange] = useState(0);
   const [hoveredIndex, setHoveredIndex] = useState(null);
+  const [savedAlbumMode, setSavedAlbumMode] = useState(false);
 
-  async function getRandomAlbums(accessToken, limit = 20) {
+  async function getRandomAlbums(limit = 20) {
     try {
-      console.log(accessToken)
+      const accessToken = token || localStorage.getItem('access_token');
+      if (!accessToken) {
+        throw new Error('No access token available');
+      }
+
       const characters = "abcdefghijklmnopqrstuvwxyz";
       const randomChar = characters.charAt(
         Math.floor(Math.random() * characters.length)
@@ -35,15 +41,11 @@ export function RandomAlbum({ token, fetchData}) {
       }
 
       const data = await response.json();
-
       localStorage.setItem('albums', JSON.stringify(data.albums.items));
-    //   setAlbums(data.albums.items);
-    setAlbums(JSON.parse(localStorage.getItem('albums')))
-    //   setIsLoading(true);
+      setAlbums(JSON.parse(localStorage.getItem('albums')));
     } catch (error) {
-      // console.error("Error fetching random albums:", error);
-      // setError("Failed to fetch albums. Please try again later.");
-      console.log(error)
+      console.error("Error fetching random albums:", error);
+      setError(error.message);
     } finally {
       setIsLoading(false);
     }
@@ -55,8 +57,13 @@ export function RandomAlbum({ token, fetchData}) {
     if (storedAlbums) {
       setAlbums(JSON.parse(storedAlbums));
       setIsLoading(false);
+    } else if (token) {
+      getRandomAlbums();
+    } else if (localStorage.getItem('access_token')) {
+      getRandomAlbums();
     } else {
-      getRandomAlbums(token);
+      setError('Unable to load albums. Please try refreshing the page.');
+      setIsLoading(false);
     }
   }, [token]);
 
@@ -92,6 +99,10 @@ export function RandomAlbum({ token, fetchData}) {
   }
 
   return (
+    <>
+    <div>
+        <UserOption setAlbums={setAlbums} />
+    </div>
     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 p-4">
       {albums.map((album, index) => (
         <div key={album.id} className="aspect-square overflow-hidden relative" onMouseEnter={() => setHoveredIndex(index)}
@@ -175,6 +186,7 @@ export function RandomAlbum({ token, fetchData}) {
         </div>
       )}
     </div>
+    </>
 
     
   );
