@@ -8,7 +8,22 @@
  */
 
 const clientId = '40520b3f91494419a614878476c8cbfc'; // your clientId
-const redirectUrl = 'http://localhost:8080';        // your redirect URL - must be localhost URL and/or HTTPS
+
+// Use different redirect URL based on environment
+const getRedirectUrl = () => {
+  if (process.env.REACT_APP_REDIRECT_URL) {
+    return process.env.REACT_APP_REDIRECT_URL;
+  }
+  
+  const currentHost = window.location.hostname;
+  if (currentHost === 'localhost' || currentHost === '127.0.0.1') {
+    return window.location.origin; // Use specific localhost URL
+  }
+  
+  return window.location.origin; // Use current origin for production
+};
+
+const redirectUrl = getRedirectUrl();
 
 const authorizationEndpoint = "https://accounts.spotify.com/authorize";
 const tokenEndpoint = "https://accounts.spotify.com/api/token";

@@ -7,9 +7,8 @@ export function MakeCollage () {
     const design1 = useRef(null);
     const design2 = useRef (null);
     const design3 = useRef(null);
-    const design4 = useRef(null); // Golden Grid
-    const design5 = useRef(null); // Spiral
-    const design6 = useRef(null); // Force
+    const design4 = useRef(null); // Spiral
+    const design5 = useRef(null); // Force
     const isInitialMount = useRef(true);
     const [activeTab, setActiveTab] = useState(0);
     const [selectedEffect, setSelectedEffect] = useState('clean');
@@ -407,19 +406,13 @@ export function MakeCollage () {
   // AI Layout Effects - Fixed with proper dependencies and debouncing
   useEffect(() => {
     if (activeTab === 3 && albums.length > 0) {
-      debouncedDrawAI(design4, 'golden-grid', selectedEffect);
+      debouncedDrawAI(design4, 'golden-spiral', selectedEffect);
     }
   }, [activeTab, selectedEffect, albums.length, debouncedDrawAI]);
 
   useEffect(() => {
     if (activeTab === 4 && albums.length > 0) {
-      debouncedDrawAI(design5, 'golden-spiral', selectedEffect);
-    }
-  }, [activeTab, selectedEffect, albums.length, debouncedDrawAI]);
-
-  useEffect(() => {
-    if (activeTab === 5 && albums.length > 0) {
-      debouncedDrawAI(design6, 'organic', selectedEffect);
+      debouncedDrawAI(design5, 'organic', selectedEffect);
     }
   }, [activeTab, selectedEffect, albums.length, debouncedDrawAI]);
 
@@ -442,29 +435,28 @@ export function MakeCollage () {
   }, [activeTab]);
 
   const tabs = [
-    { label: 'Grid', icon: '⬜', description: 'Classic grid layout' },
-    { label: 'Random', icon: '🎲', description: 'Scattered placement' },
-    { label: 'Vinyl', icon: '💿', description: 'Vinyl record style' },
-    { label: 'AI Golden', icon: '✨', description: 'Golden ratio grid' },
-    { label: 'AI Spiral', icon: '🌀', description: 'Golden spiral layout' },
-    { label: 'AI Organic', icon: '🌿', description: 'Natural force layout' },
-    { label: 'AI Generated', icon: '🤖', description: 'Real AI collage' }
+    { label: 'Grid', description: 'Classic grid layout' },
+    { label: 'Random', description: 'Scattered placement' },
+    { label: 'Vinyl', description: 'Vinyl record style' },
+    { label: 'Spiral', description: 'Golden spiral layout' },
+    { label: 'Organic', description: 'Natural force layout' },
+    { label: 'Generated', description: 'Real AI collage' }
   ];
 
   const effects = [
-    { value: 'shadow', label: 'Modern Shadows', icon: '🔳' },
-    { value: 'glow', label: 'Neon Glow', icon: '💫' },
-    { value: 'polaroid', label: 'Polaroid Style', icon: '📷' },
-    { value: 'vintage', label: 'Vintage Film', icon: '🎞️' },
-    { value: 'blend', label: 'Artistic Blend', icon: '🎨' },
-    { value: 'clean', label: 'Clean (No Background)', icon: '⚪' }
+    { value: 'shadow', label: 'Modern Shadows' },
+    { value: 'glow', label: 'Neon Glow' },
+    { value: 'polaroid', label: 'Polaroid Style' },
+    { value: 'vintage', label: 'Vintage Film' },
+    { value: 'blend', label: 'Artistic Blend' },
+    { value: 'clean', label: 'Clean (No Background)' }
   ];
 
   const regenerateAI = () => {
     if (activeTab >= 3 && !isGenerating) {
       setLastGenerated(null); // Force regeneration
-      const layoutTypes = ['golden-grid', 'golden-spiral', 'organic'];
-      const canvasRefs = [design4, design5, design6];
+      const layoutTypes = ['golden-spiral', 'organic'];
+      const canvasRefs = [design4, design5];
       const layoutType = layoutTypes[activeTab - 3];
       const canvasRef = canvasRefs[activeTab - 3];
       
@@ -476,8 +468,8 @@ export function MakeCollage () {
   const redrawWithPositions = useCallback(async (positions) => {
     if (activeTab < 3) return;
     
-    const canvasRefs = [design4, design5, design6];
-    const layoutTypes = ['golden-grid', 'golden-spiral', 'organic'];
+    const canvasRefs = [design4, design5];
+    const layoutTypes = ['golden-spiral', 'organic'];
     const canvasRef = canvasRefs[activeTab - 3];
     const canvas = canvasRef.current;
     
@@ -598,7 +590,7 @@ export function MakeCollage () {
       });
       
       // Immediate redraw to show selection
-      const canvasRefs = [design4, design5, design6];
+      const canvasRefs = [design4, design5];
       const canvas = canvasRefs[activeTab - 3]?.current;
       if (canvas) {
         const ctx = canvas.getContext('2d');
@@ -779,7 +771,7 @@ export function MakeCollage () {
         </div>
 
         {/* AI Controls */}
-        {activeTab >= 3 && activeTab <= 5 && (
+        {activeTab >= 3 && activeTab <= 4 && (
           <div className="mb-6 p-6 bg-white rounded-xl shadow-lg border border-gray-100">
             <div className="flex flex-col md:flex-row items-center gap-4">
               <div className="flex flex-col">
@@ -792,7 +784,7 @@ export function MakeCollage () {
                 >
                   {effects.map((effect) => (
                     <option key={effect.value} value={effect.value}>
-                      {effect.icon} {effect.label}
+                      {effect.label}
                     </option>
                   ))}
                 </select>
@@ -819,7 +811,7 @@ export function MakeCollage () {
                       : 'bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white transform hover:scale-105 shadow-lg'
                   }`}
                 >
-                  {isGenerating ? '🔄 Generating...' : '✨ Regenerate AI Layout'}
+                  {isGenerating ? '🔄 Generating...' : 'Regenerate Layout'}
                 </button>
               </div>
             </div>
@@ -853,7 +845,7 @@ export function MakeCollage () {
         )}
 
         {/* AI Generated Controls */}
-        {activeTab === 6 && (
+        {activeTab === 5 && (
           <div className="mb-6 p-6 bg-white rounded-xl shadow-lg border border-gray-100">
             <div className="flex flex-col items-center gap-4">
               <div className="text-center">
@@ -1005,7 +997,6 @@ export function MakeCollage () {
               }`}
             >
               <div className="text-center">
-                <div className="text-2xl mb-1">{tab.icon}</div>
                 <div className="font-bold text-sm">{tab.label}</div>
                 <div className="text-xs opacity-75 mt-1">{tab.description}</div>
               </div>
@@ -1078,22 +1069,10 @@ export function MakeCollage () {
           onMouseLeave={handleMouseUp}
           ></canvas>
 
-          <canvas ref={design6} width={canvas_size} height={canvas_size} style={{ 
-            width: `${displaySize}px`, 
-            height: `${displaySize}px`, 
-            display: activeTab !== 5 ? 'none' : 'block',
-            borderRadius: '12px',
-            boxShadow: '0 20px 40px rgba(0,0,0,0.1)',
-            border: '1px solid rgba(255,255,255,0.2)'
-          }}
-          onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
-          onMouseLeave={handleMouseUp}
-          ></canvas>
+
 
           {/* AI Generated Image Display */}
-          {activeTab === 6 && (
+          {activeTab === 5 && (
             <div style={{ 
               width: `${displaySize}px`, 
               height: `${displaySize}px`, 
@@ -1142,7 +1121,7 @@ export function MakeCollage () {
         {/* Download Button */}
         <button 
           onClick={() => {
-            if (activeTab === 6 && aiGeneratedImage) {
+            if (activeTab === 5 && aiGeneratedImage) {
               // Download AI-generated image
               const link = document.createElement('a');
               link.download = `ai-generated-collage-${Date.now()}.png`;
@@ -1150,7 +1129,7 @@ export function MakeCollage () {
               link.click();
             } else {
               // Download canvas-based collage
-              const canvases = [design1, design2, design3, design4, design5, design6];
+              const canvases = [design1, design2, design3, design4, design5];
               const canvas = canvases[activeTab].current;
               if (canvas) {
                 const link = document.createElement('a');
@@ -1160,26 +1139,22 @@ export function MakeCollage () {
               }
             }
           }}
-          disabled={isGenerating || isAIGenerating || (activeTab === 6 && !aiGeneratedImage)}
+          disabled={isGenerating || isAIGenerating || (activeTab === 5 && !aiGeneratedImage)}
           className="bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600 text-white font-bold py-4 px-8 rounded-xl shadow-lg transition-all duration-200 transform hover:scale-105 flex items-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <span className="text-xl">📥</span>
           <span>
-            {activeTab === 6 
-              ? (aiGeneratedImage ? 'Download AI Collage' : 'Generate AI Collage First')
-              : 'Download AI Collage'
+            {activeTab === 5 
+              ? (aiGeneratedImage ? 'Download Collage' : 'Generate AI Collage First')
+              : 'Download Collage'
             }
           </span>
         </button>
 
         {/* Info Panel */}
-        <div className="mt-8 p-6 bg-white rounded-xl shadow-lg border border-gray-100 max-w-4xl">
+        {/* <div className="mt-8 p-6 bg-white rounded-xl shadow-lg border border-gray-100 max-w-4xl">
           <h3 className="text-xl font-bold text-gray-800 mb-4">🤖 AI Layout Features</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm mb-6">
-            <div className="p-4 bg-purple-50 rounded-lg">
-              <div className="font-semibold text-purple-700 mb-2">✨ Golden Ratio Grid</div>
-              <div className="text-gray-600">Mathematically perfect proportions using the golden ratio for optimal visual harmony</div>
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm mb-6">
             <div className="p-4 bg-blue-50 rounded-lg">
               <div className="font-semibold text-blue-700 mb-2">🌀 Golden Spiral</div>
               <div className="text-gray-600">Natural spiral layout based on fibonacci sequences found in nature</div>
@@ -1213,7 +1188,7 @@ export function MakeCollage () {
               <div className="text-gray-600">Creates unique collages incorporating artist names, eras, and authentic color palettes</div>
             </div>
           </div>
-        </div>
+        </div> */}
     </div>
   );
 };
