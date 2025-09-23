@@ -10,20 +10,21 @@
 const clientId = '40520b3f91494419a614878476c8cbfc'; // your clientId
 
 // Use different redirect URL based on environment
-const getRedirectUrl = () => {
-  if (process.env.REACT_APP_REDIRECT_URL) {
-    return process.env.REACT_APP_REDIRECT_URL;
-  }
+// const getRedirectUrl = () => {
+//   if (process.env.REACT_APP_REDIRECT_URL) {
+//     return process.env.REACT_APP_REDIRECT_URL;
+//   }
   
-  const currentHost = window.location.hostname;
-  if (currentHost === 'localhost' || currentHost === '127.0.0.1') {
-    return window.location.origin; // Use specific localhost URL
-  }
+//   const currentHost = window.location.hostname;
+//   if (currentHost === 'localhost' || currentHost === '127.0.0.1') {
+//     return window.location.origin; // Use specific localhost URL
+//   }
   
-  return window.location.origin; // Use current origin for production
-};
+//   return window.location.origin; // Use current origin for production
+// };
 
-const redirectUrl = getRedirectUrl();
+// const redirectUrl = getRedirectUrl();
+const redirectUrl = process.env.REACT_APP_REDIRECT_URL;
 
 const authorizationEndpoint = "https://accounts.spotify.com/authorize";
 const tokenEndpoint = "https://accounts.spotify.com/api/token";

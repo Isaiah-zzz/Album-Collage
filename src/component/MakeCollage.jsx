@@ -799,7 +799,7 @@ export function MakeCollage () {
                       : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
                   }`}
                 >
-                  {isEditMode ? '✅ Edit Mode ON' : '✏️ Edit Mode OFF'}
+                  {isEditMode ? 'Edit Mode ON' : 'Edit Mode OFF'}
                 </button>
 
                 <button
@@ -849,7 +849,7 @@ export function MakeCollage () {
           <div className="mb-6 p-6 bg-white rounded-xl shadow-lg border border-gray-100">
             <div className="flex flex-col items-center gap-4">
               <div className="text-center">
-                <h3 className="text-xl font-bold text-gray-800 mb-2">🤖 Enhanced AI Collage Generation</h3>
+                <h3 className="text-xl font-bold text-gray-800 mb-2">Enhanced AI Collage Generation</h3>
                 <p className="text-gray-600">AI analyzes your album covers and creates personalized artwork</p>
               </div>
 
@@ -874,7 +874,7 @@ export function MakeCollage () {
                     </button>
                   </div>
                   <div className="text-xs text-gray-500 mt-2">
-                    <p className="mb-1">🆓 <strong>Get your free API key:</strong></p>
+                    <p className="mb-1"><strong>Get your free API key:</strong></p>
                     <p>1. Visit <a href="https://huggingface.co/join" target="_blank" rel="noopener noreferrer" className="text-blue-500">huggingface.co/join</a></p>
                     <p>2. Go to Settings → Access Tokens</p>
                     <p>3. Create a new token with "Read" permissions</p>
@@ -890,17 +890,17 @@ export function MakeCollage () {
                   className={`px-8 py-4 rounded-lg font-bold text-lg transition-all duration-200 ${
                     isAIGenerating || albums.length === 0
                       ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                      : 'bg-gradient-to-r from-cyan-500 to-purple-500 hover:from-cyan-600 hover:to-purple-600 text-white transform hover:scale-105 shadow-lg'
+                      : 'bg-emerald-500 hover:bg-emerald-600 text-white transform hover:scale-105 shadow-lg'
                   }`}
                 >
-                  {isAIGenerating ? '🎨 AI Generating...' : '🤖 Generate AI Collage'}
+                  {isAIGenerating ? 'AI Generating...' : 'Generate AI Collage'}
                 </button>
 
                 <button
                   onClick={() => setShowKeyInput(true)}
                   className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
                 >
-                  🔑 {huggingFaceKey ? 'Update' : 'Add'} API Key
+                  {huggingFaceKey ? 'Update' : 'Add'} API Key
                 </button>
               </div>
 
@@ -992,13 +992,13 @@ export function MakeCollage () {
               disabled={isGenerating && index >= 3}
               className={`px-6 py-4 rounded-xl font-medium transition-all duration-300 transform ${
                 index === activeTab
-                  ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg scale-105"
+                  ? "bg-emerald-500 text-white shadow-lg scale-105"
                   : "bg-white text-gray-700 hover:bg-gray-50 shadow-md hover:shadow-lg border border-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
               }`}
             >
               <div className="text-center">
                 <div className="font-bold text-sm">{tab.label}</div>
-                <div className="text-xs opacity-75 mt-1">{tab.description}</div>
+                {/* <div className="text-xs opacity-75 mt-1">{tab.description}</div> */}
               </div>
             </button>
           ))}
@@ -1140,9 +1140,8 @@ export function MakeCollage () {
             }
           }}
           disabled={isGenerating || isAIGenerating || (activeTab === 5 && !aiGeneratedImage)}
-          className="bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600 text-white font-bold py-4 px-8 rounded-xl shadow-lg transition-all duration-200 transform hover:scale-105 flex items-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-4 px-8 rounded-xl shadow-lg transition-all duration-200 transform hover:scale-105 flex items-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          <span className="text-xl">📥</span>
           <span>
             {activeTab === 5 
               ? (aiGeneratedImage ? 'Download Collage' : 'Generate AI Collage First')
