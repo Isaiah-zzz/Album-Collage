@@ -755,7 +755,7 @@ export function MakeCollage () {
   }, []);
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-gradient-to-br from-indigo-50 via-white to-purple-50">
+    <div className="flex flex-col items-center justify-center min-h-screen p-4 pt-20 bg-gradient-to-br from-indigo-50 via-white to-purple-50">
         {/* Header */}
         <div className="text-center mb-8">
           <h1 className="mb-4 text-4xl font-extrabold leading-none tracking-tight text-gray-900 md:text-5xl lg:text-6xl">

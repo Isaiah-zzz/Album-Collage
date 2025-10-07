@@ -67,7 +67,7 @@ export function Collage() {
     <div>
       <Nav setApiKey = {setApiKey} fetchData = {fetchData}></Nav>
 
-    <div className="flex flex-col items-center justify-center min-h-screen p-4">
+    <div className="flex flex-col items-center justify-center min-h-screen p-4 pt-20">
         <h1 className="mb-4 text-4xl font-extrabold leading-none tracking-tight text-gray-900 md:text-5xl lg:text-6xl">Album Collage</h1>
 
         {/* <div className = "max-w-[50%]">
