@@ -4,6 +4,22 @@ import { VisualEffects } from '../helper/visualEffects.js';
 import { AICollageService } from '../helper/aiCollageService.js';
 import { loadAlbums } from '../music/spotify';
 
+function loadPlate(bytes, type) {
+  const url = URL.createObjectURL(new Blob([bytes], { type: type || 'image/png' }));
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve(img);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('The plate image could not be drawn'));
+    };
+    img.src = url;
+  });
+}
+
 export function pushPointerMove(model, index, point, anchor) {
   const current = model.positions[index];
   if (!current) {
@@ -57,7 +73,9 @@ export function MakeCollage () {
     const isRedrawing = useRef(false);
 
     // AI-generated collage state
-    const [aiGeneratedImage, setAiGeneratedImage] = useState(null);
+    const plateCanvas = useRef(null);
+    const plateFlight = useRef(false);
+    const [hasPlate, setHasPlate] = useState(false);
     const [isAIGenerating, setIsAIGenerating] = useState(false);
     const [aiError, setAiError] = useState(null);
     const [huggingFaceKey, setHuggingFaceKey] = useState('');
@@ -707,30 +725,70 @@ export function MakeCollage () {
     drag.origin = null;
   }, [isEditMode]);
 
-  // AI Collage Generation Functions
+  const paintPlate = async (plate) => {
+    const canvas = plateCanvas.current;
+    if (!canvas) {
+      throw new Error('Collage canvas is not ready');
+    }
+    const plateImage = await loadPlate(plate.bytes, plate.type);
+    const surface = document.createElement('canvas');
+    surface.width = canvas.width;
+    surface.height = canvas.height;
+    const ctx = surface.getContext('2d');
+    if (!ctx) {
+      throw new Error('Collage canvas is not ready');
+    }
+    ctx.drawImage(plateImage, 0, 0, surface.width, surface.height);
+    const covers = albums.map((album) => album.covers?.[1]?.url).filter(Boolean);
+    const columns = Math.max(1, Math.ceil(Math.sqrt(covers.length)));
+    const cell = Math.floor(surface.width / columns);
+    const coverShareOfCell = 0.72;
+    const cover = Math.max(1, Math.floor(cell * coverShareOfCell));
+    const pad = Math.floor((cell - cover) / 2);
+    for (let index = 0; index < covers.length; index += 1) {
+      const column = index % columns;
+      const row = Math.floor(index / columns);
+      await VisualEffects.drawAlbumWithShadow(ctx, covers[index], {
+        x: column * cell + pad,
+        y: row * cell + pad,
+        width: cover,
+        height: cover,
+        rotation: 0,
+        scale: 1,
+      });
+    }
+    const visible = canvas.getContext('2d');
+    if (!visible) {
+      throw new Error('Collage canvas is not ready');
+    }
+    visible.drawImage(surface, 0, 0);
+  };
+
   const generateAICollage = async () => {
+    if (plateFlight.current) {
+      return;
+    }
     if (albums.length === 0) {
       setAiError('No albums available for AI generation');
       return;
     }
 
+    plateFlight.current = true;
     setIsAIGenerating(true);
     setAiError(null);
-    
+
     try {
-      console.log('Starting AI collage generation...');
-      const generatedImage = await AICollageService.generateEnhancedCollage(albums, huggingFaceKey || null);
-      setAiGeneratedImage(generatedImage);
-      console.log('AI collage generated successfully');
+      const plate = await AICollageService.generateEnhancedCollage(albums, huggingFaceKey || null);
+      await paintPlate(plate);
+      setHasPlate(true);
     } catch (error) {
       console.error('AI generation failed:', error);
       setAiError(error.message);
-      
-      // If error mentions API key, show key input
-      if (error.message.includes('401') || error.message.includes('403')) {
+      if (error.status === 401) {
         setShowKeyInput(true);
       }
     } finally {
+      plateFlight.current = false;
       setIsAIGenerating(false);
     }
   };
@@ -1081,49 +1139,34 @@ export function MakeCollage () {
 
 
 
-          {/* AI Generated Image Display */}
-          {activeTab === 5 && (
-            <div style={{ 
-              width: `${displaySize}px`, 
-              height: `${displaySize}px`, 
+          <canvas
+            ref={plateCanvas}
+            width={canvas_size}
+            height={canvas_size}
+            style={{
+              width: `${displaySize}px`,
+              height: `${displaySize}px`,
+              display: activeTab !== 5 ? 'none' : 'block',
               borderRadius: '12px',
               boxShadow: '0 20px 40px rgba(0,0,0,0.1)',
               border: '1px solid rgba(255,255,255,0.2)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: '#f9fafb'
-            }}>
-              {isAIGenerating ? (
-                <div className="text-center">
-                  <div className="animate-spin text-6xl mb-4">🤖</div>
-                  <div className="text-xl font-medium text-gray-700">AI Analyzing Your Albums...</div>
-                  <div className="text-sm text-gray-500 mt-2">
-                    • Extracting colors from album covers<br/>
-                    • Analyzing genres and artists<br/>
-                    • Detecting visual moods and eras<br/>
-                    • Generating personalized artwork
-                  </div>
-                  <div className="text-xs text-gray-400 mt-3">This may take 30-90 seconds</div>
-                </div>
-              ) : aiGeneratedImage ? (
-                <img 
-                  src={aiGeneratedImage} 
-                  alt="AI Generated Collage"
-                  style={{
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'cover',
-                    borderRadius: '12px'
-                  }}
-                />
-              ) : (
-                <div className="text-center text-gray-500">
-                  <div className="text-4xl mb-4">🎨</div>
-                  <div className="text-lg font-medium">Click "Generate AI Collage" to create</div>
-                  <div className="text-sm mt-2">AI will analyze your {albums.length} albums</div>
-                </div>
-              )}
+              backgroundColor: '#f9fafb',
+            }}
+          />
+          {activeTab === 5 && isAIGenerating && (
+            <div className="absolute inset-0 bg-white bg-opacity-90 flex items-center justify-center z-10 rounded-xl">
+              <div className="text-center">
+                <div className="text-xl font-medium text-gray-700">AI Analyzing Your Albums...</div>
+                <div className="text-sm text-gray-500 mt-2">This may take 30-90 seconds</div>
+              </div>
+            </div>
+          )}
+          {activeTab === 5 && !hasPlate && !isAIGenerating && (
+            <div className="absolute inset-0 flex items-center justify-center text-center text-gray-500">
+              <div>
+                <div className="text-lg font-medium">Click "Generate AI Collage" to create</div>
+                <div className="text-sm mt-2">AI will analyze your {albums.length} albums</div>
+              </div>
             </div>
           )}
         </div>
@@ -1131,30 +1174,24 @@ export function MakeCollage () {
         {/* Download Button */}
         <button 
           onClick={() => {
-            if (activeTab === 5 && aiGeneratedImage) {
-              // Download AI-generated image
-              const link = document.createElement('a');
-              link.download = `ai-generated-collage-${Date.now()}.png`;
-              link.href = aiGeneratedImage;
-              link.click();
-            } else {
-              // Download canvas-based collage
-              const canvases = [design1, design2, design3, design4, design5];
-              const canvas = canvases[activeTab].current;
-              if (canvas) {
-                const link = document.createElement('a');
-                link.download = `ai-collage-${tabs[activeTab].label.toLowerCase()}-${selectedEffect}.png`;
-                link.href = canvas.toDataURL();
-                link.click();
-              }
+            const canvases = [design1, design2, design3, design4, design5, plateCanvas];
+            const canvas = canvases[activeTab]?.current;
+            if (!canvas || (activeTab === 5 && !hasPlate)) {
+              return;
             }
+            const link = document.createElement('a');
+            link.download = activeTab === 5
+              ? `ai-generated-collage-${Date.now()}.png`
+              : `ai-collage-${tabs[activeTab].label.toLowerCase()}-${selectedEffect}.png`;
+            link.href = canvas.toDataURL();
+            link.click();
           }}
-          disabled={isGenerating || isAIGenerating || (activeTab === 5 && !aiGeneratedImage)}
+          disabled={isGenerating || isAIGenerating || (activeTab === 5 && !hasPlate)}
           className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-4 px-8 rounded-xl shadow-lg transition-all duration-200 transform hover:scale-105 flex items-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <span>
             {activeTab === 5 
-              ? (aiGeneratedImage ? 'Download Collage' : 'Generate AI Collage First')
+              ? (hasPlate ? 'Download Collage' : 'Generate AI Collage First')
               : 'Download Collage'
             }
           </span>
