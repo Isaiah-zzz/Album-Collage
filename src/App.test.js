@@ -1,8 +1,12 @@
 import { render, screen } from '@testing-library/react';
 import App from './App';
 
-test('renders learn react link', () => {
+jest.mock('./helper/authen.js', () => ({
+  loginWithSpotifyClick: () => {},
+  logoutClick: () => {},
+}));
+
+test('shows the Album Collage heading', () => {
   render(<App />);
-  const linkElement = screen.getByText(/learn react/i);
-  expect(linkElement).toBeInTheDocument();
+  expect(screen.getByRole('heading', { name: 'Album Collage' })).toBeInTheDocument();
 });
