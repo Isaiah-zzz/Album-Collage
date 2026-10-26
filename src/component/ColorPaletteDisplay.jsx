@@ -36,9 +36,9 @@ export function ColorPaletteDisplay({ album, showDetails = true }) {
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
       {/* Album Info */}
       <div className="flex items-center mb-3">
-        {album.images && album.images[2] && (
+        {album.covers && album.covers[2] && (
           <img 
-            src={album.images[2].url} 
+            src={album.covers[2].url} 
             alt={album.name}
             className="w-12 h-12 rounded-md mr-3 object-cover"
           />

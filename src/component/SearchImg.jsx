@@ -1,4 +1,5 @@
 import React, {useState} from 'react';
+import { albumsFromSpotify, loadAlbums, saveAlbums } from '../music/spotify';
 
 export function SearchImg({ token, indexToChange, albums, setAlbums, toggleModal }) {
     const [searchTerm, setSearchTerm] = useState('')
@@ -26,7 +27,7 @@ export function SearchImg({ token, indexToChange, albums, setAlbums, toggleModal
   
         const data = await response.json();
         console.log(data);
-        setSearchResult(data.albums.items)
+        setSearchResult(albumsFromSpotify(data.albums.items))
       } catch (error) {
         console.error('There was an error!', error);
       }
@@ -41,9 +42,9 @@ export function SearchImg({ token, indexToChange, albums, setAlbums, toggleModal
       newAlbums[indexToChange] = album;
     }
     
-    localStorage.setItem('albums',JSON.stringify(newAlbums))
+    saveAlbums(newAlbums)
 
-    setAlbums(JSON.parse(localStorage.getItem('albums')))
+    setAlbums(loadAlbums() ?? [])
 
     toggleModal()
   };
@@ -81,7 +82,7 @@ export function SearchImg({ token, indexToChange, albums, setAlbums, toggleModal
     {searchResult.map((album, index) => (
       <div key={index} className="overflow-hidden">
         <img
-          src={album.images[1].url}
+          src={album.covers[1].url}
           alt={`Image ${index + 1}`}
           className="object-cover"
           onClick={()=>handleModalClick(album,)}
