@@ -4,6 +4,22 @@ import { VisualEffects } from '../helper/visualEffects.js';
 import { AICollageService } from '../helper/aiCollageService.js';
 import { loadAlbums } from '../music/spotify';
 
+export function pushPointerMove(model, index, point, anchor) {
+  const current = model.positions[index];
+  if (!current) {
+    return null;
+  }
+  const positions = model.positions.slice();
+  positions[index] = {
+    ...current,
+    x: Math.max(0, point.x - anchor.x),
+    y: Math.max(0, point.y - anchor.y),
+  };
+  model.positions = positions;
+  model.latest = { x: point.x, y: point.y };
+  return positions[index];
+}
+
 export function MakeCollage () {
     const design1 = useRef(null);
     const design2 = useRef (null);
