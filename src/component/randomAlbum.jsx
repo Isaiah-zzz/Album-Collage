@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { UserOption } from './userOption.jsx';
+import { loadAlbums, saveAlbums } from '../music/spotify';
 
 import { SearchImg } from "./SearchImg";
 
@@ -41,8 +42,8 @@ export function RandomAlbum({ token, fetchData }) {
       }
 
       const data = await response.json();
-      localStorage.setItem('albums', JSON.stringify(data.albums.items));
-      setAlbums(JSON.parse(localStorage.getItem('albums')));
+      saveAlbums(data.albums.items);
+      setAlbums(loadAlbums() ?? []);
     } catch (error) {
       console.error("Error fetching random albums:", error);
       setError(error.message);
@@ -52,10 +53,10 @@ export function RandomAlbum({ token, fetchData }) {
   }
 
   useEffect(() => {
-    const storedAlbums = localStorage.getItem('albums');
-    
+    const storedAlbums = loadAlbums();
+
     if (storedAlbums) {
-      setAlbums(JSON.parse(storedAlbums));
+      setAlbums(storedAlbums);
       setIsLoading(false);
     } else if (token) {
       getRandomAlbums();
@@ -88,9 +89,9 @@ export function RandomAlbum({ token, fetchData }) {
     const newAlbums = [...albums];
     newAlbums.splice(index, 1);
 
-    localStorage.setItem('albums',JSON.stringify(newAlbums))
+    saveAlbums(newAlbums)
 
-    setAlbums(JSON.parse(localStorage.getItem('albums')))
+    setAlbums(loadAlbums() ?? [])
   }
 
   const handleAlbumAdd = () => {
@@ -125,7 +126,7 @@ export function RandomAlbum({ token, fetchData }) {
           
           ) : (
             <img
-              src={album.images[0]?.url}
+              src={album.covers[0]?.url}
               alt={album.name}
               className="w-full h-full object-cover cursor-pointer"
               // onClick={() => handleAlbumClick(index)}

@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { LayoutAI } from '../helper/layoutAI.js';
 import { VisualEffects } from '../helper/visualEffects.js';
 import { AICollageService } from '../helper/aiCollageService.js';
+import { loadAlbums } from '../music/spotify';
 
 export function MakeCollage () {
     const design1 = useRef(null);
@@ -43,9 +44,8 @@ export function MakeCollage () {
     const [huggingFaceKey, setHuggingFaceKey] = useState('');
     const [showKeyInput, setShowKeyInput] = useState(false);
 
-  const storedAlbums = localStorage.getItem('albums');
-  const albums = storedAlbums ? JSON.parse(storedAlbums) : [];
-  const imageUrls = albums.map((album) => album.images[1]?.url).filter(Boolean);
+  const albums = loadAlbums() ?? [];
+  const imageUrls = albums.map((album) => album.covers[1]?.url).filter(Boolean);
 
   const album_size = 300;
   
@@ -200,7 +200,7 @@ export function MakeCollage () {
         
         const batchPromises = batch.map(async (position) => {
           const album = albums[position.albumIndex];
-          const imageUrl = album?.images[1]?.url;
+          const imageUrl = album?.covers[1]?.url;
           
           if (!imageUrl) {
             console.warn(`No image URL for album index ${position.albumIndex}`);
@@ -492,7 +492,7 @@ export function MakeCollage () {
     for (let i = 0; i < positions.length; i++) {
       const position = positions[i];
       const album = albums[position.albumIndex];
-      const imageUrl = album?.images[1]?.url;
+      const imageUrl = album?.covers[1]?.url;
       
       if (!imageUrl) continue;
       

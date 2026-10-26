@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { loadAlbums, saveAlbums } from '../music/spotify';
 
 export function UserOption({ setAlbums }) {
     const [error, setError] = useState(null);
@@ -32,10 +33,8 @@ export function UserOption({ setAlbums }) {
 
             const data = await response.json();
 
-            let clean_data = data.items.map(item => item.album)
-
-            localStorage.setItem('albums', JSON.stringify(clean_data));
-            setAlbums(JSON.parse(localStorage.getItem('albums')));
+            saveAlbums(data.items.map(item => item.album));
+            setAlbums(loadAlbums() ?? []);
         } catch (err) {
             setError(err.message);
             console.error('Error fetching saved albums:', err);
