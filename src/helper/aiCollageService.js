@@ -1,10 +1,6 @@
-// AI Collage Service using Hugging Face Inference API
+import { fetchPlate, plateRequest } from '../music/plate.js';
+
 export class AICollageService {
-  
-  static API_BASE = 'https://api-inference.huggingface.co/models';
-  static MODEL = 'stabilityai/stable-diffusion-xl-base-1.0'; // Free SDXL model
-  static FALLBACK_MODEL = 'runwayml/stable-diffusion-v1-5'; // More accessible fallback
-  
   // Convert image URL to base64
   static async imageUrlToBase64(url) {
     try {
@@ -237,114 +233,16 @@ QUALITY: Professional music poster design, high detail, rich colors, museum qual
     };
   }
   
-  // Generate AI collage using Hugging Face
   static async generateAICollage(albums, apiKey = null) {
     if (!albums || albums.length === 0) {
       throw new Error('No albums provided for AI generation');
     }
-    
-    console.log(`Starting AI collage generation for ${albums.length} albums`);
-    
-    // Try primary model first, then fallback
-    try {
-      return await this.tryGenerateWithModel(albums, this.MODEL, apiKey);
-    } catch (primaryError) {
-      console.log('Primary model failed, trying fallback model...');
-      try {
-        return await this.tryGenerateWithModel(albums, this.FALLBACK_MODEL, apiKey);
-      } catch (fallbackError) {
-        console.error('Both models failed:', { primaryError, fallbackError });
-        throw new Error(`AI generation failed. ${primaryError.message}`);
-      }
-    }
+    return this.tryGenerateWithModel(albums, apiKey);
   }
-  
-  // Try generating with a specific model
-  static async tryGenerateWithModel(albums, modelName, apiKey = null, customPrompt = null) {
-    try {
-      // Create the prompt
-      const prompt = customPrompt || this.createCollagePrompt(albums);
-      console.log('Generated prompt:', prompt);
-      console.log('Using model:', modelName);
-      
-      // Prepare headers - only add Authorization if we have a key
-      const headers = {
-        'Content-Type': 'application/json',
-      };
-      
-      if (apiKey && apiKey.trim()) {
-        headers['Authorization'] = `Bearer ${apiKey.trim()}`;
-        console.log('Using API key for authentication');
-      } else {
-        console.log('No API key provided, using free tier');
-      }
-      
-      console.log('Making request to Hugging Face API...');
-      
-      const response = await fetch(`${this.API_BASE}/${modelName}`, {
-        method: 'POST',
-        headers: headers,
-        body: JSON.stringify({
-          inputs: prompt,
-          parameters: {
-            negative_prompt: "blurry, low quality, distorted, ugly, bad anatomy, bad composition, text, watermark",
-            num_inference_steps: apiKey ? 100 : 20, // More steps if we have API key
-            guidance_scale: 7.5,
-            width: apiKey ? 1024 : 512, // Higher res if we have API key
-            height: apiKey ? 1024 : 512
-          }
-        })
-      });
-      
-      console.log('Response status:', response.status);
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('API Error Response:', errorText);
-        
-        // Handle specific error cases
-        if (response.status === 401) {
-          throw new Error('Authentication failed. Please add a valid Hugging Face API key.');
-        } else if (response.status === 503) {
-          // Model is loading
-          try {
-            const errorJson = JSON.parse(errorText);
-            if (errorJson.estimated_time) {
-              throw new Error(`AI model is loading. Please wait ${errorJson.estimated_time} seconds and try again.`);
-            }
-          } catch (e) {
-            // If parsing fails, use generic message
-          }
-          throw new Error('AI service is temporarily unavailable. Please try again in a few minutes.');
-        } else if (response.status === 429) {
-          throw new Error('Rate limit exceeded. Please wait a moment and try again, or add an API key for unlimited access.');
-        }
-        
-        throw new Error(`Hugging Face API error: ${response.status} - ${errorText}`);
-      }
-      
-      // Get the generated image blob
-      const imageBlob = await response.blob();
-      
-      // Check if we actually got an image
-      if (imageBlob.size === 0) {
-        throw new Error('Received empty response from AI service. Please try again.');
-      }
-      
-      console.log('Successfully generated AI image, size:', imageBlob.size);
-      
-      // Convert to data URL for display
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = reject;
-        reader.readAsDataURL(imageBlob);
-      });
-      
-    } catch (error) {
-      console.error('AI collage generation failed with model', modelName, ':', error);
-      throw error;
-    }
+
+  static async tryGenerateWithModel(albums, apiKey = null, customPrompt = null) {
+    const prompt = customPrompt || this.createCollagePrompt(albums);
+    return fetchPlate(apiKey, prompt);
   }
   
   // Alternative: Generate with album cover analysis
@@ -565,17 +463,14 @@ Style inspiration: album cover art, music poster design.`;
     return 'balanced and sophisticated';
   }
 
-  // Enhanced generation with actual album analysis
   static async generateEnhancedCollage(albums, apiKey = null) {
-    console.log('Starting enhanced AI collage generation with album analysis...');
-    
+    if (!albums || albums.length === 0) {
+      throw new Error('No albums provided for AI generation');
+    }
+    let prompt = this.createCollagePrompt(albums);
     try {
-      // Analyze actual album covers
       const colorAnalysis = await this.analyzeAlbumColors(albums);
-      
-      // Create enhanced prompt with real data
-      const basePrompt = this.createCollagePrompt(albums);
-      const enhancedPrompt = `${basePrompt}
+      prompt = `${prompt}
 
 REAL ALBUM ANALYSIS:
 Color Analysis: Based on ${colorAnalysis.analysisCount}/${colorAnalysis.totalAlbums} album covers analyzed
@@ -583,42 +478,26 @@ Dominant Colors: ${colorAnalysis.dominantColors.join(', ')}
 Visual Mood: ${colorAnalysis.mood}
 
 ARTISTIC DIRECTION: Create a collage that reflects the actual visual aesthetic of these specific albums, incorporating their real color palettes and artistic styles. The composition should feel authentic to this particular music collection.`;
-
-      console.log('Enhanced prompt with real album analysis:', enhancedPrompt);
-      
-      // Use the enhanced prompt for generation
-      return await this.tryGenerateWithModel(albums, this.MODEL, apiKey, enhancedPrompt);
-      
     } catch (error) {
-      console.warn('Enhanced analysis failed, falling back to standard generation:', error);
-      return await this.generateAICollage(albums, apiKey);
+      console.warn('Enhanced analysis failed, using the base prompt:', error);
     }
+    return this.tryGenerateWithModel(albums, apiKey, prompt);
   }
-  
-  // Check if Hugging Face API is available
+
   static async checkAPIHealth() {
     try {
-      const response = await fetch(`${this.API_BASE}/${this.MODEL}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ inputs: "test" })
-      });
-      
-      return response.status !== 403; // 403 means no API key, but service is up
+      const request = plateRequest(null, 'test');
+      const response = await fetch(request.url, { method: 'GET' });
+      return response.status !== 403;
     } catch (error) {
       return false;
     }
   }
-  
-  // Get model loading status
+
   static async getModelStatus() {
     try {
-      const response = await fetch(`${this.API_BASE}/${this.MODEL}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ inputs: "test" })
-      });
-      
+      const request = plateRequest(null, 'test');
+      const response = await fetch(request.url, { method: 'GET' });
       if (response.status === 503) {
         const result = await response.json();
         return {
@@ -626,7 +505,6 @@ ARTISTIC DIRECTION: Create a collage that reflects the actual visual aesthetic o
           estimatedTime: result.estimated_time || 30
         };
       }
-      
       return { loading: false, estimatedTime: 0 };
     } catch (error) {
       return { loading: false, estimatedTime: 0 };
