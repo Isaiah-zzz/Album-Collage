@@ -4,6 +4,22 @@ import { VisualEffects } from '../helper/visualEffects.js';
 import { AICollageService } from '../helper/aiCollageService.js';
 import { loadAlbums } from '../music/spotify';
 
+export function pushPointerMove(model, index, point, anchor) {
+  const current = model.positions[index];
+  if (!current) {
+    return null;
+  }
+  const positions = model.positions.slice();
+  positions[index] = {
+    ...current,
+    x: Math.max(0, point.x - anchor.x),
+    y: Math.max(0, point.y - anchor.y),
+  };
+  model.positions = positions;
+  model.latest = { x: point.x, y: point.y };
+  return positions[index];
+}
+
 export function MakeCollage () {
     const design1 = useRef(null);
     const design2 = useRef (null);
@@ -26,16 +42,19 @@ export function MakeCollage () {
     const [isEditMode, setIsEditMode] = useState(false);
     const [albumPositions, setAlbumPositions] = useState([]);
     const [selectedAlbum, setSelectedAlbum] = useState(null);
-    const [isDragging, setIsDragging] = useState(false);
-    const [isResizing, setIsResizing] = useState(false);
-    const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-    const [resizeHandle, setResizeHandle] = useState(null);
-    const [originalPosition, setOriginalPosition] = useState(null);
-
-    // Debouncing for redraw operations
+    const dragRef = useRef({
+      positions: [],
+      drawing: false,
+      latest: null,
+      mode: 'idle',
+      anchor: { x: 0, y: 0 },
+      down: { x: 0, y: 0 },
+      origin: null,
+      handle: null,
+    });
+    const selectedRef = useRef(null);
     const redrawTimeoutRef = useRef(null);
     const isRedrawing = useRef(false);
-    const lastMoveTime = useRef(0);
 
     // AI-generated collage state
     const [aiGeneratedImage, setAiGeneratedImage] = useState(null);
@@ -250,13 +269,12 @@ export function MakeCollage () {
       
       console.log(`Successfully drew ${drawCount} albums for ${layoutType} layout`);
       
-      // Save positions for interactive editing
+      dragRef.current.positions = positions;
       setAlbumPositions(positions);
       
-      // Draw selection and resize handles if in edit mode
-      if (isEditMode && selectedAlbum !== null && positions[selectedAlbum]) {
-        drawSelectionOutline(ctx, positions[selectedAlbum]);
-        drawResizeHandles(ctx, positions[selectedAlbum]);
+      if (isEditMode && selectedRef.current !== null && positions[selectedRef.current]) {
+        drawSelectionOutline(ctx, positions[selectedRef.current]);
+        drawResizeHandles(ctx, positions[selectedRef.current]);
       }
       
       // Apply post-processing effects (skip for clean option)
@@ -273,7 +291,7 @@ export function MakeCollage () {
     } finally {
       setIsGenerating(false);
     }
-  }, [albums, isGenerating, lastGenerated, isEditMode, selectedAlbum]);
+  }, [albums, isGenerating, lastGenerated, isEditMode]);
 
   // Debounced AI generation to prevent rapid re-renders
   const debouncedDrawAI = useCallback((canvasRef, layoutType, effectType) => {
@@ -422,14 +440,25 @@ export function MakeCollage () {
       if (generateTimeoutRef.current) {
         clearTimeout(generateTimeoutRef.current);
       }
-      if (redrawTimeoutRef.current) {
-        clearTimeout(redrawTimeoutRef.current);
+      if (redrawTimeoutRef.current != null) {
+        cancelAnimationFrame(redrawTimeoutRef.current);
       }
     };
   }, []);
 
-  // Clear selection when switching tabs
   useEffect(() => {
+    selectedRef.current = selectedAlbum;
+  }, [selectedAlbum]);
+
+  useEffect(() => {
+    const drag = dragRef.current;
+    if (drag.mode !== 'idle') {
+      setAlbumPositions(drag.positions);
+      drag.mode = 'idle';
+      drag.handle = null;
+      drag.origin = null;
+    }
+    selectedRef.current = null;
     setSelectedAlbum(null);
     setIsEditMode(false);
   }, [activeTab]);
@@ -529,172 +558,153 @@ export function MakeCollage () {
       }
     }
     
-    // Draw selection and handles if needed
-    if (selectedAlbum !== null && positions[selectedAlbum]) {
-      drawSelectionOutline(ctx, positions[selectedAlbum]);
-      drawResizeHandles(ctx, positions[selectedAlbum]);
+    const selectedIndex = selectedRef.current;
+    if (selectedIndex !== null && positions[selectedIndex]) {
+      drawSelectionOutline(ctx, positions[selectedIndex]);
+      drawResizeHandles(ctx, positions[selectedIndex]);
     }
     
-  }, [activeTab, selectedEffect, albums, selectedAlbum]);
+  }, [activeTab, selectedEffect, albums]);
 
-  // Debounced redraw function to prevent multiple copies
   const debouncedRedraw = useCallback((positions) => {
-    // Clear any existing timeout
-    if (redrawTimeoutRef.current) {
-      clearTimeout(redrawTimeoutRef.current);
-    }
-    
-    // Skip if already redrawing
-    if (isRedrawing.current) {
+    dragRef.current.positions = positions;
+    if (redrawTimeoutRef.current != null) {
       return;
     }
-    
-    // Set timeout for debounced redraw
-    redrawTimeoutRef.current = setTimeout(async () => {
+    redrawTimeoutRef.current = requestAnimationFrame(() => {
+      redrawTimeoutRef.current = null;
+      const latest = dragRef.current.positions;
       isRedrawing.current = true;
-      try {
-        await redrawWithPositions(positions);
-      } finally {
+      dragRef.current.drawing = true;
+      Promise.resolve(redrawWithPositions(latest)).finally(() => {
         isRedrawing.current = false;
-      }
-    }, 16); // ~60fps
+        dragRef.current.drawing = false;
+        if (dragRef.current.positions !== latest) {
+          debouncedRedraw(dragRef.current.positions);
+        }
+      });
+    });
   }, [redrawWithPositions]);
 
-  // Interactive editing mouse handlers
   const handleMouseDown = useCallback((e) => {
     if (!isEditMode || activeTab < 3) return;
-    
-    const canvas = e.target;
-    const coords = getCanvasCoordinates(canvas, e.clientX, e.clientY);
-    
-    // Check if clicking on resize handle
-    if (selectedAlbum !== null && albumPositions[selectedAlbum]) {
-      const handle = hitTestResizeHandle(coords.x, coords.y, albumPositions[selectedAlbum]);
+
+    const drag = dragRef.current;
+    drag.positions = albumPositions;
+    const coords = getCanvasCoordinates(e.target, e.clientX, e.clientY);
+    const index = selectedRef.current;
+
+    if (index !== null && drag.positions[index]) {
+      const handle = hitTestResizeHandle(coords.x, coords.y, drag.positions[index]);
       if (handle) {
-        setIsResizing(true);
-        setResizeHandle(handle);
-        setOriginalPosition({ ...albumPositions[selectedAlbum] });
-        setDragStart(coords);
+        drag.mode = 'resize';
+        drag.handle = handle;
+        drag.origin = { ...drag.positions[index] };
+        drag.down = coords;
         return;
       }
     }
-    
-    // Check if clicking on an album
-    const hitIndex = hitTestAlbum(coords.x, coords.y, albumPositions);
+
+    const hitIndex = hitTestAlbum(coords.x, coords.y, drag.positions);
     if (hitIndex !== -1) {
+      selectedRef.current = hitIndex;
       setSelectedAlbum(hitIndex);
-      setIsDragging(true);
-      setDragStart({
-        x: coords.x - albumPositions[hitIndex].x,
-        y: coords.y - albumPositions[hitIndex].y
-      });
-      
-      // Immediate redraw to show selection
-      const canvasRefs = [design4, design5];
-      const canvas = canvasRefs[activeTab - 3]?.current;
-      if (canvas) {
-        const ctx = canvas.getContext('2d');
-        // Clear any pending redraws
-        if (redrawTimeoutRef.current) {
-          clearTimeout(redrawTimeoutRef.current);
-        }
-        isRedrawing.current = false;
-      }
+      drag.mode = 'drag';
+      drag.anchor = {
+        x: coords.x - drag.positions[hitIndex].x,
+        y: coords.y - drag.positions[hitIndex].y,
+      };
+      debouncedRedraw(drag.positions);
     } else {
+      selectedRef.current = null;
       setSelectedAlbum(null);
     }
-  }, [isEditMode, activeTab, selectedAlbum, albumPositions]);
+  }, [isEditMode, activeTab, albumPositions, debouncedRedraw]);
 
   const handleMouseMove = useCallback((e) => {
     if (!isEditMode || activeTab < 3) return;
-    
-    // Throttle mouse move events to improve performance
-    const now = Date.now();
-    if (now - lastMoveTime.current < 16) return; // ~60fps throttling
-    lastMoveTime.current = now;
-    
+
     const canvas = e.target;
     const coords = getCanvasCoordinates(canvas, e.clientX, e.clientY);
-    
-    if (isResizing && selectedAlbum !== null && originalPosition && resizeHandle) {
-      const newPositions = [...albumPositions];
-      const dx = coords.x - dragStart.x;
-      const dy = coords.y - dragStart.y;
-      
+    const drag = dragRef.current;
+    if (drag.mode === 'idle') {
+      drag.positions = albumPositions;
+    }
+    const index = selectedRef.current;
+
+    if (drag.mode === 'resize' && index !== null && drag.origin && drag.handle) {
+      const dx = coords.x - drag.down.x;
+      const dy = coords.y - drag.down.y;
       const minSize = 50;
-      let newPos = { ...originalPosition };
-      
-      switch (resizeHandle) {
-        case 'se': // Southeast corner
-          newPos.width = Math.max(minSize, originalPosition.width + dx);
-          newPos.height = Math.max(minSize, originalPosition.height + dy);
+      const origin = drag.origin;
+      const newPositions = drag.positions.slice();
+      const newPos = { ...origin };
+
+      switch (drag.handle) {
+        case 'se':
+          newPos.width = Math.max(minSize, origin.width + dx);
+          newPos.height = Math.max(minSize, origin.height + dy);
           break;
-        case 'sw': // Southwest corner
-          newPos.width = Math.max(minSize, originalPosition.width - dx);
-          newPos.height = Math.max(minSize, originalPosition.height + dy);
-          newPos.x = originalPosition.x + originalPosition.width - newPos.width;
+        case 'sw':
+          newPos.width = Math.max(minSize, origin.width - dx);
+          newPos.height = Math.max(minSize, origin.height + dy);
+          newPos.x = origin.x + origin.width - newPos.width;
           break;
-        case 'ne': // Northeast corner
-          newPos.width = Math.max(minSize, originalPosition.width + dx);
-          newPos.height = Math.max(minSize, originalPosition.height - dy);
-          newPos.y = originalPosition.y + originalPosition.height - newPos.height;
+        case 'ne':
+          newPos.width = Math.max(minSize, origin.width + dx);
+          newPos.height = Math.max(minSize, origin.height - dy);
+          newPos.y = origin.y + origin.height - newPos.height;
           break;
-        case 'nw': // Northwest corner
-          newPos.width = Math.max(minSize, originalPosition.width - dx);
-          newPos.height = Math.max(minSize, originalPosition.height - dy);
-          newPos.x = originalPosition.x + originalPosition.width - newPos.width;
-          newPos.y = originalPosition.y + originalPosition.height - newPos.height;
+        case 'nw':
+          newPos.width = Math.max(minSize, origin.width - dx);
+          newPos.height = Math.max(minSize, origin.height - dy);
+          newPos.x = origin.x + origin.width - newPos.width;
+          newPos.y = origin.y + origin.height - newPos.height;
+          break;
+        default:
           break;
       }
-      
-      newPositions[selectedAlbum] = newPos;
-      setAlbumPositions(newPositions);
-      
-      // Redraw canvas with new positions
+
+      newPositions[index] = newPos;
+      drag.positions = newPositions;
+      drag.latest = { x: coords.x, y: coords.y };
+      drag.drawing = isRedrawing.current;
       debouncedRedraw(newPositions);
-      
-    } else if (isDragging && selectedAlbum !== null) {
-      const newPositions = [...albumPositions];
-      newPositions[selectedAlbum] = {
-        ...newPositions[selectedAlbum],
-        x: Math.max(0, coords.x - dragStart.x),
-        y: Math.max(0, coords.y - dragStart.y)
-      };
-      setAlbumPositions(newPositions);
-      
-      // Redraw canvas with new positions
-      debouncedRedraw(newPositions);
+    } else if (drag.mode === 'drag' && index !== null) {
+      drag.drawing = isRedrawing.current;
+      pushPointerMove(drag, index, coords, drag.anchor);
+      debouncedRedraw(drag.positions);
     }
-    
-    // Update cursor based on what's being hovered
-    if (selectedAlbum !== null && albumPositions[selectedAlbum]) {
-      const handle = hitTestResizeHandle(coords.x, coords.y, albumPositions[selectedAlbum]);
+
+    const positions = drag.positions;
+    if (index !== null && positions[index]) {
+      const handle = hitTestResizeHandle(coords.x, coords.y, positions[index]);
       if (handle) {
         const cursors = {
-          'nw': 'nw-resize',
-          'ne': 'ne-resize',
-          'sw': 'sw-resize',
-          'se': 'se-resize'
+          nw: 'nw-resize',
+          ne: 'ne-resize',
+          sw: 'sw-resize',
+          se: 'se-resize',
         };
         canvas.style.cursor = cursors[handle];
-      } else if (hitTestAlbum(coords.x, coords.y, albumPositions) !== -1) {
+      } else if (hitTestAlbum(coords.x, coords.y, positions) !== -1) {
         canvas.style.cursor = 'move';
       } else {
         canvas.style.cursor = 'default';
       }
     } else {
-      canvas.style.cursor = hitTestAlbum(coords.x, coords.y, albumPositions) !== -1 ? 'pointer' : 'default';
+      canvas.style.cursor = hitTestAlbum(coords.x, coords.y, positions) !== -1 ? 'pointer' : 'default';
     }
-    
-  }, [isEditMode, activeTab, isResizing, isDragging, selectedAlbum, albumPositions, originalPosition, resizeHandle, dragStart, debouncedRedraw]);
+  }, [isEditMode, activeTab, albumPositions, debouncedRedraw]);
 
   const handleMouseUp = useCallback(() => {
     if (!isEditMode) return;
-    
-    setIsDragging(false);
-    setIsResizing(false);
-    setResizeHandle(null);
-    setOriginalPosition(null);
+    const drag = dragRef.current;
+    if (drag.mode === 'idle') return;
+    setAlbumPositions(drag.positions);
+    drag.mode = 'idle';
+    drag.handle = null;
+    drag.origin = null;
   }, [isEditMode]);
 
   // AI Collage Generation Functions
